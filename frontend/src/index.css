@@ -1,0 +1,154 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom base styles */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply font-body text-illini-blue bg-cloud antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-bold;
+  }
+}
+
+/* Custom component classes */
+@layer components {
+  .btn-primary {
+    @apply bg-illini-orange text-white font-semibold py-2.5 px-6 rounded-lg 
+           hover:bg-illini-orange-dark transition-all duration-200 
+           focus:outline-none focus:ring-2 focus:ring-illini-orange focus:ring-offset-2
+           active:scale-[0.98] shadow-sm hover:shadow-md;
+  }
+  
+  .btn-secondary {
+    @apply bg-illini-blue text-white font-semibold py-2.5 px-6 rounded-lg 
+           hover:bg-illini-blue-light transition-all duration-200 
+           focus:outline-none focus:ring-2 focus:ring-illini-blue focus:ring-offset-2
+           active:scale-[0.98] shadow-sm hover:shadow-md;
+  }
+  
+  .btn-outline {
+    @apply border-2 border-illini-orange text-illini-orange font-semibold py-2 px-6 rounded-lg 
+           hover:bg-illini-orange hover:text-white transition-all duration-200 
+           focus:outline-none focus:ring-2 focus:ring-illini-orange focus:ring-offset-2
+           active:scale-[0.98];
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 border border-gray-200 rounded-lg 
+           focus:outline-none focus:ring-2 focus:ring-illini-orange/50 focus:border-illini-orange
+           transition-all duration-200 bg-white;
+  }
+  
+  .card {
+    @apply bg-white rounded-xl shadow-card hover:shadow-card-hover 
+           transition-all duration-300 overflow-hidden;
+  }
+  
+  .badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold;
+  }
+  
+  .badge-orange {
+    @apply badge bg-illini-orange/10 text-illini-orange;
+  }
+  
+  .badge-blue {
+    @apply badge bg-illini-blue/10 text-illini-blue;
+  }
+  
+  .badge-green {
+    @apply badge bg-green-100 text-green-700;
+  }
+  
+  .link-hover {
+    @apply hover:text-illini-orange transition-colors duration-200;
+  }
+}
+
+/* Custom utilities */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .gradient-orange {
+    @apply bg-gradient-to-r from-illini-orange to-illini-orange-dark;
+  }
+  
+  .gradient-blue {
+    @apply bg-gradient-to-r from-illini-blue to-illini-blue-light;
+  }
+  
+  .pattern-dots {
+    background-image: radial-gradient(#E84A27 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  
+  .pattern-grid {
+    background-image: 
+      linear-gradient(rgba(19, 41, 75, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(19, 41, 75, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full hover:bg-gray-400;
+}
+
+/* Selection styling */
+::selection {
+  @apply bg-illini-orange/20 text-illini-blue;
+}
+
+/* Page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Loading spinner */
+.spinner {
+  @apply w-6 h-6 border-2 border-illini-orange border-t-transparent rounded-full animate-spin;
+}
+
+/* Toast notifications */
+.toast {
+  @apply fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 animate-slide-up;
+}
+
+.toast-success {
+  @apply toast bg-green-600 text-white;
+}
+
+.toast-error {
+  @apply toast bg-red-600 text-white;
+}
+
+.toast-info {
+  @apply toast bg-illini-blue text-white;
+}
+
