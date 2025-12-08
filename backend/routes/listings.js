@@ -7,21 +7,11 @@ const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const cloudinary = require('../config/cloudinary');
+const { Readable } = require('stream');
 
-// Configure multer for image uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../uploads/listings');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Configure multer to store files in memory (for Cloudinary upload)
+const storage = multer.memoryStorage();
 
 const upload = multer({ 
   storage,
@@ -36,6 +26,32 @@ const upload = multer({
     cb(new Error('Only image files (jpeg, jpg, png, webp) are allowed'));
   }
 });
+
+// Helper function to upload image to Cloudinary
+const uploadToCloudinary = (file) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'illini-exchange/listings',
+        resource_type: 'image',
+        transformation: [
+          { width: 1200, height: 1200, crop: 'limit', quality: 'auto' }
+        ]
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(result.secure_url); // Return the secure URL
+        }
+      }
+    );
+
+    // Convert buffer to stream
+    const stream = Readable.from(file.buffer);
+    stream.pipe(uploadStream);
+  });
+};
 
 // Get all listings with filters
 router.get('/', optionalAuth, async (req, res) => {
@@ -248,14 +264,18 @@ router.post('/', authenticateToken, upload.array('images', 5), [
     }
 
     const listingId = uuidv4();
-    const images = req.files.map(f => `/uploads/listings/${f.filename}`);
+    
+    // Upload images to Cloudinary
+    const imageUploads = await Promise.all(
+      req.files.map(file => uploadToCloudinary(file))
+    );
 
     await pool.query(`
       INSERT INTO listings (id, seller_id, title, description, price, category, condition_status, 
                            exchange_point_id, images, status, views, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, NOW(), NOW())
     `, [listingId, req.user.id, title, description, parseFloat(price), category, condition_status, 
-        exchange_point_id, JSON.stringify(images)]);
+        exchange_point_id, JSON.stringify(imageUploads)]);
 
     const [newListing] = await pool.query('SELECT * FROM listings WHERE id = ?', [listingId]);
     res.status(201).json(newListing[0]);
@@ -301,10 +321,13 @@ router.put('/:id', authenticateToken, upload.array('images', 5), [
     if (status) { updates.push('status = ?'); params.push(status); }
 
     if (req.files && req.files.length > 0) {
-      const newImages = req.files.map(f => `/uploads/listings/${f.filename}`);
+      // Upload new images to Cloudinary
+      const newImageUrls = await Promise.all(
+        req.files.map(file => uploadToCloudinary(file))
+      );
       const existingImages = JSON.parse(listings[0].images || '[]');
       updates.push('images = ?');
-      params.push(JSON.stringify([...existingImages, ...newImages]));
+      params.push(JSON.stringify([...existingImages, ...newImageUrls]));
     }
 
     updates.push('updated_at = NOW()');

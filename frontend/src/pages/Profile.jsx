@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { usersAPI, listingsAPI, getImageUrl } from '../services/api';
+import { usersAPI, listingsAPI, exchangePointsAPI, getImageUrl } from '../services/api';
 import ListingCard from '../components/ListingCard';
 import { 
   User, Mail, Calendar, Shield, Plus, Edit2, 
-  Package, Eye, CheckCircle, Clock, XCircle, Trash2 
+  Package, Eye, CheckCircle, Clock, XCircle, Trash2,
+  ImagePlus, X, MapPin, DollarSign, Tag, FileText, AlertCircle, Loader
 } from 'lucide-react';
 
 const Profile = () => {
@@ -16,15 +17,45 @@ const Profile = () => {
   const [activeTab, setActiveTab] = useState('active');
   const [editingListing, setEditingListing] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [exchangePoints, setExchangePoints] = useState([]);
+  const [editFormData, setEditFormData] = useState({});
+  const [editImages, setEditImages] = useState([]);
+  const [editPreviewUrls, setEditPreviewUrls] = useState([]);
+  const [editExistingImages, setEditExistingImages] = useState([]);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState('');
 
   useEffect(() => {
     fetchProfile();
     fetchListings();
+    fetchExchangePoints();
   }, []);
 
   useEffect(() => {
     fetchListings();
   }, [activeTab]);
+
+  useEffect(() => {
+    if (editingListing) {
+      const images = typeof editingListing.images === 'string' 
+        ? JSON.parse(editingListing.images || '[]') 
+        : editingListing.images || [];
+      
+      setEditFormData({
+        title: editingListing.title || '',
+        description: editingListing.description || '',
+        price: editingListing.price || '',
+        category: editingListing.category || '',
+        condition_status: editingListing.condition_status || '',
+        exchange_point_id: editingListing.exchange_point_id || '',
+        status: editingListing.status || 'active'
+      });
+      setEditExistingImages(images);
+      setEditImages([]);
+      setEditPreviewUrls([]);
+      setEditError('');
+    }
+  }, [editingListing]);
 
   const fetchProfile = async () => {
     try {
@@ -48,13 +79,71 @@ const Profile = () => {
     }
   };
 
-  const handleStatusChange = async (listingId, newStatus) => {
+  const fetchExchangePoints = async () => {
     try {
-      await listingsAPI.update(listingId, { status: newStatus });
-      fetchListings();
+      const response = await exchangePointsAPI.getAll();
+      setExchangePoints(response.data);
+    } catch (error) {
+      console.error('Error fetching exchange points:', error);
+    }
+  };
+
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({ ...prev, [name]: value }));
+    setEditError('');
+  };
+
+  const handleEditImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    const totalImages = editExistingImages.length + editImages.length + files.length;
+    
+    if (totalImages > 5) {
+      setEditError('Maximum 5 images allowed');
+      return;
+    }
+
+    const newPreviewUrls = files.map(file => URL.createObjectURL(file));
+    setEditPreviewUrls(prev => [...prev, ...newPreviewUrls]);
+    setEditImages(prev => [...prev, ...files]);
+    setEditError('');
+  };
+
+  const removeEditImage = (index, isExisting = false) => {
+    if (isExisting) {
+      setEditExistingImages(prev => prev.filter((_, i) => i !== index));
+    } else {
+      URL.revokeObjectURL(editPreviewUrls[index]);
+      setEditPreviewUrls(prev => prev.filter((_, i) => i !== index));
+      setEditImages(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setEditLoading(true);
+    setEditError('');
+
+    try {
+      const data = {
+        ...editFormData,
+        images: editImages.length > 0 ? editImages : undefined
+      };
+
+      await listingsAPI.update(editingListing.id, data);
+      await fetchListings();
       setEditingListing(null);
     } catch (error) {
-      console.error('Error updating listing:', error);
+      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        const errorMessages = error.response.data.errors.map(err => err.msg || err.message).join(', ');
+        setEditError(errorMessages || 'Validation failed');
+      } else if (error.response?.data?.error) {
+        setEditError(error.response.data.error);
+      } else {
+        setEditError(error.message || 'Failed to update listing');
+      }
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -73,6 +162,27 @@ const Profile = () => {
     { id: 'reserved', label: 'Reserved', icon: Clock },
     { id: 'sold', label: 'Sold', icon: Package },
     { id: 'all', label: 'All', icon: Eye }
+  ];
+
+  const categories = [
+    { id: 'textbooks', name: 'Textbooks', icon: '📚' },
+    { id: 'electronics', name: 'Electronics', icon: '💻' },
+    { id: 'furniture', name: 'Furniture', icon: '🪑' },
+    { id: 'clothing', name: 'Clothing', icon: '👕' },
+    { id: 'sports', name: 'Sports & Outdoors', icon: '⚽' },
+    { id: 'tickets', name: 'Tickets & Events', icon: '🎟️' },
+    { id: 'transportation', name: 'Transportation', icon: '🚲' },
+    { id: 'housing', name: 'Housing & Sublease', icon: '🏠' },
+    { id: 'services', name: 'Services', icon: '🔧' },
+    { id: 'other', name: 'Other', icon: '📦' }
+  ];
+
+  const conditions = [
+    { id: 'new', name: 'New', desc: 'Never used, still in original packaging' },
+    { id: 'like_new', name: 'Like New', desc: 'Used very lightly, no visible wear' },
+    { id: 'good', name: 'Good', desc: 'Some signs of use, fully functional' },
+    { id: 'fair', name: 'Fair', desc: 'Noticeable wear, still works properly' },
+    { id: 'poor', name: 'Poor', desc: 'Heavy wear, may have cosmetic issues' }
   ];
 
   const formatDate = (dateString) => {
@@ -245,83 +355,298 @@ const Profile = () => {
 
       {/* Edit Listing Modal */}
       {editingListing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 animate-scale-in">
-            <h3 className="text-xl font-semibold text-illini-blue mb-4">
-              Update Listing Status
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl max-w-3xl w-full p-6 my-8 animate-scale-in max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-semibold text-illini-blue">
+                Edit Listing
             </h3>
-            <p className="text-gray-600 mb-6">
-              Change the status of "{editingListing.title}"
-            </p>
-
-            <div className="space-y-3">
               <button
-                onClick={() => handleStatusChange(editingListing.id, 'active')}
-                className={`w-full p-3 rounded-lg border-2 text-left flex items-center gap-3 transition-colors ${
-                  editingListing.status === 'active'
-                    ? 'border-green-500 bg-green-50'
+                onClick={() => setEditingListing(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={24} className="text-gray-500" />
+              </button>
+            </div>
+
+            {editError && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
+                <p className="text-red-700">{editError}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleEditSubmit} className="space-y-6">
+              {/* Images */}
+              <div className="bg-gray-50 rounded-xl p-6">
+                <h4 className="text-lg font-semibold text-illini-blue mb-4 flex items-center gap-2">
+                  <ImagePlus size={20} />
+                  Photos
+                </h4>
+                <p className="text-sm text-gray-500 mb-4">
+                  Existing images (click X to remove). Add new images below.
+                </p>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                  {editExistingImages.map((imagePath, index) => (
+                    <div key={index} className="relative aspect-square group">
+                      <img
+                        src={getImageUrl(imagePath)}
+                        alt={`Existing ${index + 1}`}
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeEditImage(index, true)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  {editPreviewUrls.map((url, index) => (
+                    <div key={`new-${index}`} className="relative aspect-square group">
+                      <img
+                        src={url}
+                        alt={`New ${index + 1}`}
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeEditImage(index, false)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  {(editExistingImages.length + editImages.length) < 5 && (
+                    <label className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-illini-orange hover:bg-illini-orange/5 transition-colors">
+                      <ImagePlus className="text-gray-400 mb-1" size={24} />
+                      <span className="text-xs text-gray-500">Add Photo</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={handleEditImageChange}
+                        multiple
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              {/* Title & Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  value={editFormData.title}
+                  onChange={handleEditInputChange}
+                  className="input-field"
+                  maxLength={100}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  name="description"
+                  value={editFormData.description}
+                  onChange={handleEditInputChange}
+                  className="input-field min-h-[120px] resize-none"
+                  maxLength={2000}
+                  required
+                />
+              </div>
+
+              {/* Price */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Price <span className="text-red-500">*</span>
+                </label>
+                <div className="relative max-w-xs">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="number"
+                    name="price"
+                    value={editFormData.price}
+                    onChange={handleEditInputChange}
+                    className="input-field pl-10"
+                    min="0"
+                    step="0.01"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Category <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setEditFormData(prev => ({ ...prev, category: cat.id }))}
+                      className={`p-3 rounded-lg border-2 text-center transition-all ${
+                        editFormData.category === cat.id
+                          ? 'border-illini-orange bg-illini-orange/10 text-illini-orange'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="text-2xl block mb-1">{cat.icon}</span>
+                      <span className="text-xs font-medium">{cat.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Condition */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Condition <span className="text-red-500">*</span>
+                </label>
+                <div className="space-y-2">
+                  {conditions.map((cond) => (
+                    <button
+                      key={cond.id}
+                      type="button"
+                      onClick={() => setEditFormData(prev => ({ ...prev, condition_status: cond.id }))}
+                      className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
+                        editFormData.condition_status === cond.id
+                          ? 'border-illini-orange bg-illini-orange/10'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <CheckCircle className="text-green-500" size={20} />
+                      <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-medium">Active</div>
-                  <div className="text-sm text-gray-500">Visible to buyers</div>
+                          <span className="font-medium text-illini-blue">{cond.name}</span>
+                          <p className="text-sm text-gray-500 mt-0.5">{cond.desc}</p>
+                        </div>
+                        {editFormData.condition_status === cond.id && (
+                          <CheckCircle className="text-illini-orange" size={20} />
+                        )}
+                      </div>
+                    </button>
+                  ))}
                 </div>
-              </button>
+              </div>
 
+              {/* Exchange Point */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Exchange Point <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="exchange_point_id"
+                  value={editFormData.exchange_point_id}
+                  onChange={handleEditInputChange}
+                  className="input-field"
+                  required
+                >
+                  <option value="">Select an exchange point</option>
+                  {exchangePoints.map((point) => (
+                    <option key={point.id} value={point.id}>
+                      {point.name} - {point.zone}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditFormData(prev => ({ ...prev, status: 'active' }))}
+                    className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                      editFormData.status === 'active'
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <CheckCircle className="text-green-500 mb-1" size={20} />
+                    <div className="font-medium">Active</div>
+                    <div className="text-xs text-gray-500">Visible to buyers</div>
+              </button>
               <button
-                onClick={() => handleStatusChange(editingListing.id, 'reserved')}
-                className={`w-full p-3 rounded-lg border-2 text-left flex items-center gap-3 transition-colors ${
-                  editingListing.status === 'reserved'
+                    type="button"
+                    onClick={() => setEditFormData(prev => ({ ...prev, status: 'reserved' }))}
+                    className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                      editFormData.status === 'reserved'
                     ? 'border-yellow-500 bg-yellow-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <Clock className="text-yellow-500" size={20} />
-                <div>
+                    <Clock className="text-yellow-500 mb-1" size={20} />
                   <div className="font-medium">Reserved</div>
-                  <div className="text-sm text-gray-500">Pending sale</div>
-                </div>
+                    <div className="text-xs text-gray-500">Pending sale</div>
               </button>
-
               <button
-                onClick={() => handleStatusChange(editingListing.id, 'sold')}
-                className={`w-full p-3 rounded-lg border-2 text-left flex items-center gap-3 transition-colors ${
-                  editingListing.status === 'sold'
+                    type="button"
+                    onClick={() => setEditFormData(prev => ({ ...prev, status: 'sold' }))}
+                    className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                      editFormData.status === 'sold'
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <Package className="text-blue-500" size={20} />
-                <div>
+                    <Package className="text-blue-500 mb-1" size={20} />
                   <div className="font-medium">Sold</div>
-                  <div className="text-sm text-gray-500">Transaction complete</div>
-                </div>
+                    <div className="text-xs text-gray-500">Transaction complete</div>
               </button>
-
               <button
-                onClick={() => handleStatusChange(editingListing.id, 'inactive')}
-                className={`w-full p-3 rounded-lg border-2 text-left flex items-center gap-3 transition-colors ${
-                  editingListing.status === 'inactive'
+                    type="button"
+                    onClick={() => setEditFormData(prev => ({ ...prev, status: 'inactive' }))}
+                    className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                      editFormData.status === 'inactive'
                     ? 'border-gray-500 bg-gray-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <XCircle className="text-gray-500" size={20} />
-                <div>
+                    <XCircle className="text-gray-500 mb-1" size={20} />
                   <div className="font-medium">Inactive</div>
-                  <div className="text-sm text-gray-500">Hidden from marketplace</div>
+                    <div className="text-xs text-gray-500">Hidden</div>
+                  </button>
                 </div>
-              </button>
             </div>
 
+              {/* Submit Buttons */}
+              <div className="flex gap-3 pt-4">
             <button
+                  type="button"
               onClick={() => setEditingListing(null)}
-              className="w-full mt-6 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+                  className="btn-outline flex-1"
             >
               Cancel
             </button>
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="btn-primary flex-1 flex items-center justify-center gap-2"
+                >
+                  {editLoading ? (
+                    <>
+                      <Loader className="animate-spin" size={20} />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Listing'
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

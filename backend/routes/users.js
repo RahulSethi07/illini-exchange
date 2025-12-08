@@ -6,21 +6,11 @@ const { authenticateToken } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const cloudinary = require('../config/cloudinary');
+const { Readable } = require('stream');
 
-// Configure multer for profile pictures
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../uploads/profiles');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Configure multer to store files in memory (for Cloudinary upload)
+const storage = multer.memoryStorage();
 
 const upload = multer({ 
   storage,
@@ -35,6 +25,32 @@ const upload = multer({
     cb(new Error('Only image files are allowed'));
   }
 });
+
+// Helper function to upload image to Cloudinary
+const uploadToCloudinary = (file) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'illini-exchange/profiles',
+        resource_type: 'image',
+        transformation: [
+          { width: 400, height: 400, crop: 'limit', quality: 'auto' }
+        ]
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(result.secure_url); // Return the secure URL
+        }
+      }
+    );
+
+    // Convert buffer to stream
+    const stream = Readable.from(file.buffer);
+    stream.pipe(uploadStream);
+  });
+};
 
 // Get user profile
 router.get('/profile', authenticateToken, async (req, res) => {
@@ -124,8 +140,10 @@ router.put('/profile', authenticateToken, upload.single('profile_picture'), [
     }
 
     if (req.file) {
+      // Upload profile picture to Cloudinary
+      const profilePictureUrl = await uploadToCloudinary(req.file);
       updates.push('profile_picture = ?');
-      params.push(`/uploads/profiles/${req.file.filename}`);
+      params.push(profilePictureUrl);
     }
 
     if (updates.length === 0) {
