@@ -32,7 +32,8 @@ const Login = () => {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = '/api/auth/google';
+    const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+    window.location.href = `${apiBaseUrl}/auth/google`;
   };
 
   return (
