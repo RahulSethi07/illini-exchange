@@ -125,9 +125,24 @@ const Profile = () => {
     setEditError('');
 
     try {
+      // Get original image count for comparison
+      const originalImages = typeof editingListing.images === 'string' 
+        ? JSON.parse(editingListing.images || '[]') 
+        : editingListing.images || [];
+      const originalImageCount = originalImages.length;
+      
+      // Check if images are being modified (added, removed, or both)
+      const hasNewImages = editImages.length > 0;
+      const hasRemovedImages = editExistingImages.length !== originalImageCount;
+      const isModifyingImages = hasNewImages || hasRemovedImages;
+      
       const data = {
         ...editFormData,
-        images: editImages.length > 0 ? editImages : undefined
+        // Only include images if there are new files to upload
+        images: hasNewImages ? editImages : undefined,
+        // Always send existing_images if we're modifying images (even if empty array)
+        // This tells backend which existing images to keep (empty = remove all)
+        existing_images: isModifyingImages ? JSON.stringify(editExistingImages) : undefined
       };
 
       await listingsAPI.update(editingListing.id, data);

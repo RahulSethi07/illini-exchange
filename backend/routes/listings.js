@@ -30,6 +30,11 @@ const upload = multer({
 // Helper function to upload image to Cloudinary
 const uploadToCloudinary = (file) => {
   return new Promise((resolve, reject) => {
+    // Check if Cloudinary is configured
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      return reject(new Error('Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables.'));
+    }
+
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder: 'illini-exchange/listings',
@@ -40,6 +45,7 @@ const uploadToCloudinary = (file) => {
       },
       (error, result) => {
         if (error) {
+          console.error('Cloudinary upload error:', error);
           reject(error);
         } else {
           resolve(result.secure_url); // Return the secure URL
@@ -308,7 +314,7 @@ router.put('/:id', authenticateToken, upload.array('images', 5), [
       return res.status(404).json({ error: 'Listing not found or unauthorized' });
     }
 
-    const { title, description, price, category, condition_status, exchange_point_id, status } = req.body;
+    const { title, description, price, category, condition_status, exchange_point_id, status, existing_images } = req.body;
     const updates = [];
     const params = [];
 
@@ -320,18 +326,67 @@ router.put('/:id', authenticateToken, upload.array('images', 5), [
     if (exchange_point_id) { updates.push('exchange_point_id = ?'); params.push(exchange_point_id); }
     if (status) { updates.push('status = ?'); params.push(status); }
 
-    if (req.files && req.files.length > 0) {
-      // Upload new images to Cloudinary
-      const newImageUrls = await Promise.all(
-        req.files.map(file => uploadToCloudinary(file))
-      );
-      const existingImages = JSON.parse(listings[0].images || '[]');
+    // Handle image updates - only if files are being uploaded OR existing_images is explicitly provided
+    const hasNewImages = req.files && req.files.length > 0;
+    const hasExistingImagesUpdate = existing_images !== undefined && existing_images !== null && existing_images !== '';
+    
+    if (hasNewImages || hasExistingImagesUpdate) {
+      let finalImages = [];
+      
+      // Get existing images to keep (if provided)
+      if (hasExistingImagesUpdate) {
+        try {
+          // existing_images might already be a string or an object
+          if (typeof existing_images === 'string') {
+            // Empty string means remove all existing images
+            finalImages = existing_images.trim() ? JSON.parse(existing_images) : [];
+          } else if (Array.isArray(existing_images)) {
+            finalImages = existing_images;
+          } else {
+            // If it's not a valid format, use all existing images
+            finalImages = JSON.parse(listings[0].images || '[]');
+          }
+        } catch (e) {
+          console.error('Error parsing existing_images:', e);
+          // If parsing fails, use all existing images
+          finalImages = JSON.parse(listings[0].images || '[]');
+        }
+      } else {
+        // If no existing_images provided, keep all current images
+        finalImages = JSON.parse(listings[0].images || '[]');
+      }
+      
+      // Upload new images to Cloudinary and add to final list
+      if (hasNewImages) {
+        try {
+          const newImageUrls = await Promise.all(
+            req.files.map(file => uploadToCloudinary(file))
+          );
+          finalImages = [...finalImages, ...newImageUrls];
+        } catch (uploadError) {
+          console.error('Error uploading images to Cloudinary:', uploadError);
+          return res.status(500).json({ 
+            error: 'Failed to upload images',
+            message: process.env.NODE_ENV === 'development' ? uploadError.message : 'Image upload failed. Please check Cloudinary configuration.'
+          });
+        }
+      }
+      
+      // Ensure we have at least one image
+      if (finalImages.length === 0) {
+        return res.status(400).json({ error: 'At least one image is required' });
+      }
+      
       updates.push('images = ?');
-      params.push(JSON.stringify([...existingImages, ...newImageUrls]));
+      params.push(JSON.stringify(finalImages));
     }
 
     updates.push('updated_at = NOW()');
     params.push(req.params.id);
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No updates provided' });
+    }
 
     await pool.query(`UPDATE listings SET ${updates.join(', ')} WHERE id = ?`, params);
 
@@ -339,7 +394,11 @@ router.put('/:id', authenticateToken, upload.array('images', 5), [
     res.json(updatedListing[0]);
   } catch (error) {
     console.error('Error updating listing:', error);
-    res.status(500).json({ error: 'Failed to update listing' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Failed to update listing',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 

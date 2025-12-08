@@ -68,7 +68,27 @@ export const listingsAPI = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
-  update: (id, data) => api.put(`/listings/${id}`, data),
+  update: (id, data) => {
+    // Check if there are images to upload or existing images to update
+    if ((data.images && Array.isArray(data.images) && data.images.length > 0) || data.existing_images) {
+      const formData = new FormData();
+      Object.keys(data).forEach(key => {
+        if (key === 'images' && Array.isArray(data[key])) {
+          data[key].forEach(image => formData.append('images', image));
+        } else if (key === 'existing_images') {
+          // Send existing images as JSON string
+          formData.append('existing_images', data[key]);
+        } else {
+          formData.append(key, data[key]);
+        }
+      });
+      return api.put(`/listings/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+    }
+    // No images, send as regular JSON
+    return api.put(`/listings/${id}`, data);
+  },
   delete: (id) => api.delete(`/listings/${id}`),
   getCategories: () => api.get('/listings/meta/categories')
 };
