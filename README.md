@@ -277,12 +277,9 @@ Based on feedback received, we implemented the following design decisions:
 
 ## 👥 Team
 
-CS 409 - The Art and Science of Web Programming  
+Rahul Sethi | Aryan Taneja | Madhav Kanda
 Fall 2025 - University of Illinois Urbana-Champaign
 
-## 📄 License
-
-This project was created for educational purposes as part of CS 409 coursework.
 
 ---
 
