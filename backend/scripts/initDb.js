@@ -3,10 +3,21 @@ require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
 const initDatabase = async () => {
   // Connect without database to create it if needed
+  // const connection = await mysql.createConnection({
+  //   host: process.env.DB_HOST || 'localhost',
+  //   user: process.env.DB_USER || 'root',
+  //   password: process.env.DB_PASSWORD || ''
+  // });
+
   const connection = await mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || ''
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    port: 4000, // TiDB uses port 4000
+    ssl: {
+      minVersion: 'TLSv1.2',
+      rejectUnauthorized: true
+    }
   });
 
   const dbName = process.env.DB_NAME || 'illini_exchange';

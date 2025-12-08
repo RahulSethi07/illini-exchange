@@ -232,14 +232,48 @@ Based on feedback received, we implemented the following design decisions:
 ## 🚢 Deployment
 
 ### Backend (e.g., Railway, Render)
-1. Set environment variables
+1. Set environment variables:
+   ```env
+   DB_HOST=your_database_host
+   DB_USER=your_database_user
+   DB_PASSWORD=your_database_password
+   DB_NAME=illini_exchange
+   JWT_SECRET=your_super_secret_jwt_key_here
+   GOOGLE_CLIENT_ID=your_google_client_id
+   GOOGLE_CLIENT_SECRET=your_google_client_secret
+   GOOGLE_CALLBACK_URL=https://your-backend-url.com/api/auth/google/callback
+   FRONTEND_URL=https://your-vercel-app.vercel.app
+   PORT=5000
+   NODE_ENV=production
+   ```
 2. Run `npm run init-db` once for database setup
 3. Deploy with `npm start`
 
-### Frontend (e.g., Vercel, Netlify)
+### Frontend (Vercel)
+1. **Connect your repository to Vercel**
+   - Go to [vercel.com](https://vercel.com)
+   - Import your repository
+   - Set the root directory to `frontend`
+
+2. **Configure Environment Variables in Vercel Dashboard**
+   - Go to Project Settings → Environment Variables
+   - Add: `VITE_API_URL` = `https://your-backend-url.com/api`
+   - Make sure to add it for Production, Preview, and Development environments
+
+3. **Deploy**
+   - Vercel will automatically detect Vite and build your app
+   - The `vercel.json` file (already included) handles SPA routing
+
+4. **Important Notes:**
+   - The `vite.config.js` proxy only works in development mode
+   - In production, all API calls will use `VITE_API_URL`
+   - Make sure your backend CORS allows your Vercel domain
+
+### Frontend (Netlify)
 1. Set `VITE_API_URL` to your backend URL
 2. Build with `npm run build`
 3. Deploy the `dist` folder
+4. Add a `_redirects` file in `public/` with: `/* /index.html 200`
 
 ## 👥 Team
 
