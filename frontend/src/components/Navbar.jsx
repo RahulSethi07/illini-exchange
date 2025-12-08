@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getImageUrl } from '../services/api';
 import { Menu, X, Plus, User, LogOut, ShoppingBag, Search, Heart } from 'lucide-react';
 
 const Navbar = () => {
@@ -85,7 +86,7 @@ const Navbar = () => {
                 >
                   {user.profile_picture ? (
                     <img
-                      src={user.profile_picture}
+                      src={getImageUrl(user.profile_picture)}
                       alt={user.name}
                       className="w-8 h-8 rounded-full object-cover border-2 border-illini-orange"
                     />

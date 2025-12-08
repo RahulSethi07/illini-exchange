@@ -101,5 +101,36 @@ export const favoritesAPI = {
   remove: (listingId) => api.delete(`/favorites/${listingId}`)
 };
 
+// Helper function to get the backend base URL (without /api)
+export const getBackendBaseUrl = () => {
+  const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  
+  // If it's a full URL (production), remove /api to get base URL
+  if (apiUrl.startsWith('http')) {
+    return apiUrl.replace('/api', '');
+  }
+  
+  // In development, use current origin (localhost:5001)
+  return window.location.origin.replace(':3000', ':5001');
+};
+
+// Helper function to get full image URL
+export const getImageUrl = (imagePath) => {
+  if (!imagePath) return '';
+  
+  // If it's already a full URL, return as is
+  if (imagePath.startsWith('http')) {
+    return imagePath;
+  }
+  
+  // If it starts with /, prepend backend base URL
+  if (imagePath.startsWith('/')) {
+    return `${getBackendBaseUrl()}${imagePath}`;
+  }
+  
+  // Otherwise return as is
+  return imagePath;
+};
+
 export default api;
 

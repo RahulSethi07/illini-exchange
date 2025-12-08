@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { listingsAPI, favoritesAPI } from '../services/api';
+import { listingsAPI, favoritesAPI, getImageUrl } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { 
   ArrowLeft, MapPin, Clock, Eye, Mail, Shield, 
@@ -197,9 +197,7 @@ const ListingDetails = () => {
               {images.length > 0 ? (
                 <>
                   <img
-                    src={images[currentImageIndex].startsWith('/') 
-                      ? `http://localhost:5001${images[currentImageIndex]}` 
-                      : images[currentImageIndex]}
+                    src={getImageUrl(images[currentImageIndex])}
                     alt={listing.title}
                     className="w-full h-full object-cover"
                   />
@@ -253,7 +251,7 @@ const ListingDetails = () => {
                     }`}
                   >
                     <img
-                      src={image.startsWith('/') ? `http://localhost:5001${image}` : image}
+                      src={getImageUrl(image)}
                       alt={`${listing.title} ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
@@ -347,7 +345,7 @@ const ListingDetails = () => {
               <div className="flex items-center gap-4">
                 {listing.seller_picture ? (
                   <img
-                    src={listing.seller_picture}
+                    src={getImageUrl(listing.seller_picture)}
                     alt={listing.seller_name}
                     className="w-14 h-14 rounded-full object-cover border-2 border-illini-orange"
                   />

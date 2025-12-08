@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { usersAPI, listingsAPI } from '../services/api';
+import { usersAPI, listingsAPI, getImageUrl } from '../services/api';
 import ListingCard from '../components/ListingCard';
 import { 
   User, Mail, Calendar, Shield, Plus, Edit2, 
@@ -93,7 +93,7 @@ const Profile = () => {
             <div className="relative">
               {user?.profile_picture ? (
                 <img
-                  src={user.profile_picture}
+                  src={getImageUrl(user.profile_picture)}
                   alt={user.name}
                   className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-lg"
                 />
@@ -193,8 +193,8 @@ const Profile = () => {
               <div key={listing.id} className="relative group">
                 <ListingCard listing={listing} />
                 
-                {/* Quick Actions Overlay */}
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Quick Actions Overlay - positioned to the left of favorite button */}
+                <div className="absolute top-2 right-14 opacity-0 group-hover:opacity-100 transition-opacity z-30">
                   <div className="flex gap-2">
                     <button
                       onClick={(e) => {

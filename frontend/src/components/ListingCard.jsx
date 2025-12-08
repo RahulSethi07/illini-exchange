@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Clock, Eye, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { favoritesAPI } from '../services/api';
+import { favoritesAPI, getImageUrl } from '../services/api';
 
 const ListingCard = ({ listing, onFavoriteChange }) => {
   const { isAuthenticated } = useAuth();
@@ -102,7 +102,7 @@ const ListingCard = ({ listing, onFavoriteChange }) => {
         <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
           {images.length > 0 ? (
             <img
-              src={images[0].startsWith('/') ? `http://localhost:5001${images[0]}` : images[0]}
+              src={getImageUrl(images[0])}
               alt={listing.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
