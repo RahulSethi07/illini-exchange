@@ -2,12 +2,10 @@
 
 > The secure marketplace exclusively for University of Illinois Urbana-Champaign students and staff.
 
-![UIUC Colors](https://img.shields.io/badge/UIUC-Orange%20%23E84A27-orange)
-![UIUC Colors](https://img.shields.io/badge/UIUC-Blue%20%2313294B-blue)
 
 ## 📋 Project Overview
 
-Illini Exchange is a web application designed for CS 409 at UIUC. It provides a secure platform for UIUC students and staff to buy, sell, and exchange items like textbooks, furniture, and electronics, avoiding the scams commonly found on Facebook Marketplace or Craigslist.
+Illini Exchange is a web application designed at UIUC. It provides a secure platform for UIUC students and staff to buy, sell, and exchange items like textbooks, furniture, and electronics, avoiding the scams commonly found on Facebook Marketplace or Craigslist.
 
 ### Key Features
 
@@ -24,15 +22,6 @@ Illini Exchange is a web application designed for CS 409 at UIUC. It provides a 
 - **Database**: MySQL
 - **Authentication**: JWT + Google OAuth (simulating NetID SSO)
 
-## 🎨 Design System
-
-### UIUC Brand Colors
-- **Illini Orange**: `#E84A27`
-- **Illini Blue**: `#13294B`
-
-### Typography
-- **Display Font**: Montserrat (headings)
-- **Body Font**: Source Sans Pro (body text)
 
 ## 🚀 Getting Started
 
@@ -77,9 +66,17 @@ Illini Exchange is a web application designed for CS 409 at UIUC. It provides a 
    PORT=5000
    NODE_ENV=development
    FRONTEND_URL=http://localhost:3000
+
+   # Images stored in Cloud
+   CLOUDINARY_CLOUD_NAME=your_cloud_name
+   CLOUDINARY_API_KEY=your_api_key
+   CLOUDINARY_API_SECRET=your_api_secret
    ```
 
 4. **Initialize the Database**
+
+   Only required if running locally
+
    ```bash
    npm run init-db
    ```
@@ -218,20 +215,10 @@ Based on feedback received, we implemented the following design decisions:
    - Form validation with clear error messages
    - Confirmation dialogs for destructive actions
 
-## 📊 Grading Breakdown
-
-| Component | Weight | Description |
-|-----------|--------|-------------|
-| Proposal/Prototypes | 10% | Initial design and wireframes |
-| Video | 15% | Demo video showcasing the app |
-| Design | 35% | UX, UI, Responsiveness, Heuristic Evaluation |
-| Frontend | 15% | React implementation |
-| Backend | 15% | Node.js/Express API |
-| Authentication | 10% | JWT + Google OAuth |
 
 ## 🚢 Deployment
 
-### Backend (e.g., Railway, Render)
+### Backend (Render)
 1. Set environment variables:
    ```env
    DB_HOST=your_database_host
@@ -269,15 +256,10 @@ Based on feedback received, we implemented the following design decisions:
    - In production, all API calls will use `VITE_API_URL`
    - Make sure your backend CORS allows your Vercel domain
 
-### Frontend (Netlify)
-1. Set `VITE_API_URL` to your backend URL
-2. Build with `npm run build`
-3. Deploy the `dist` folder
-4. Add a `_redirects` file in `public/` with: `/* /index.html 200`
 
 ## 👥 Team
 
-Rahul Sethi | Aryan Taneja | Madhav Kanda
+Rahul Sethi | Aryan Taneja | Madhav Kanda  
 Fall 2025 - University of Illinois Urbana-Champaign
 
 
